@@ -1,89 +1,125 @@
 -- 1.
 
-select vacation.id, content.price
-from vacation join content
-	on vacation.id = content.vacationid
-where vacation.country like 'M%a%ija'
+SELECT VACATION.ID, CONTENT.PRICE
+FROM VACATION JOIN CONTENT
+	ON VACATION.ID = CONTENT.VACATIONID
+WHERE VACATION.COUNTRY LIKE 'M%A%IJA'
 
 -- 2.
 
-select hotel
-from transport join package
-	on transport.id = package.id
-group by hotel
-having count(distinct transport.transport) > 3
+SELECT HOTEL
+FROM TRANSPORT JOIN PACKAGE
+	ON TRANSPORT.ID = PACKAGE.ID
+GROUP BY HOTEL
+HAVING COUNT(DISTINCT TRANSPORT.TRANSPORT) > 3
 
 -- 3.
 
-with vacationcity as
-(select vacationid, count(distinct city)
-from content join package
-	on content.packageid=package.id
-group by vacationid)
+WITH VACATIONCITY AS
+(SELECT VACATIONID, COUNT(DISTINCT CITY)
+FROM CONTENT JOIN PACKAGE
+	ON CONTENT.PACKAGEID=PACKAGE.ID
+GROUP BY VACATIONID)
 
-select vacation.*
-from vacation join vacationcity 
-	on vacation.id = vacationcity.vacationid
-where vacationcity.count > 2
+SELECT VACATION.*
+FROM VACATION JOIN VACATIONCITY 
+	ON VACATION.ID = VACATIONCITY.VACATIONID
+WHERE VACATIONCITY.COUNT > 2
 
 -- 4.1
 
--- if there are more than 1 vacations with the same maximum, then the solution will not give us the correct results
+-- IF THERE ARE MORE THAN 1 VACATIONS WITH THE SAME MAXIMUM, THEN THE SOLUTION WILL NOT GIVE US THE CORRECT RESULTS
 
-with vacationtransport as
-(select vacid, count(distinct transport) transport_count
-from content c join transport t
-	on c.packageid=t.packageid
-group by vacid)
+WITH VACATIONTRANSPORT AS
+(SELECT VACID, COUNT(DISTINCT TRANSPORT) TRANSPORT_COUNT
+FROM CONTENT C JOIN TRANSPORT T
+	ON C.PACKAGEID=T.PACKAGEID
+GROUP BY VACID)
 
-select top 1 v.*
-from vacation v join vacationtransport vt
-	on v.id = vt.id
-order by transport_count desc
+SELECT TOP 1 V.*
+FROM VACATION V JOIN VACATIONTRANSPORT VT
+	ON V.ID = VT.ID
+ORDER BY TRANSPORT_COUNT DESC
 
--- in that case we can use this solution
+-- IN THAT CASE WE CAN USE THIS SOLUTION
 
-with vacationtrasport as
-(select c.vacid, count(distinct transport) transport_count
-from content c join transport t
-	on c.packageid=t.packageid
-group by c.vacid)
+WITH VACATIONTRASPORT AS
+(SELECT C.VACID, COUNT(DISTINCT TRANSPORT) TRANSPORT_COUNT
+FROM CONTENT C JOIN TRANSPORT T
+	ON C.PACKAGEID=T.PACKAGEID
+GROUP BY C.VACID)
 
-select v.*
-from vacation v join vacationtransport vt
-	on v.vacid=vt.vacid
-where vt.transport_count = (select max(transport_count)
-				from vacationtransport)
+SELECT V.*
+FROM VACATION V JOIN VACATIONTRANSPORT VT
+	ON V.VACID=VT.VACID
+WHERE VT.TRANSPORT_COUNT = (SELECT MAX(TRANSPORT_COUNT)
+				FROM VACATIONTRANSPORT)
 
--- third solution
+-- THIRD SOLUTION
 
-select vacid, count(distinct transport) transport_count
-into £vacationtransport
-from content c join transport t 
-	on c.packageid=t.packageid
-group by vacid
+SELECT VACID, COUNT(DISTINCT TRANSPORT) TRANSPORT_COUNT
+INTO £VACATIONTRANSPORT
+FROM CONTENT C JOIN TRANSPORT T 
+	ON C.PACKAGEID=T.PACKAGEID
+GROUP BY VACID
 
-select max(transport_count) maks
-into #maxtransport 
-from #vacationtransport
+SELECT MAX(TRANSPORT_COUNT) MAKS
+INTO #MAXTRANSPORT 
+FROM #VACATIONTRANSPORT
 
-with targetvacation as
-(select vacid
-from #vacationtransport vt join #maxtransport mt
-	on vt.transportno = mt.maks)
+WITH TARGETVACATION AS
+(SELECT VACID
+FROM #VACATIONTRANSPORT VT JOIN #MAXTRANSPORT MT
+	ON VT.TRANSPORTNO = MT.MAKS)
 
-select v.*
-from vacation v join targetvacation tv
-	on v.vacid=tv.vacid
+SELECT V.*
+FROM VACATION V JOIN TARGETVACATION TV
+	ON V.VACID=TV.VACID
+
+-- 5.	
+
+WITH PROFIT AS
+(SELECT EMPID, SUM(PERCENT*PRICE) TOTAL
+FROM GUIDANCE G JOIN VACATION V 
+	ON G.VACATIONID=V.VACATIONID JOIN CONTENT C
+		ON V.VACATIONID=C.VACATIONID
+WHERE START_DATE BETWEEN '2017-07-01' AND '2017-07-31'
+GROUP BY EMPID)
+
+SELECT EMPID
+FROM PROFIT
+WHERE TOTAL >  (SELECT AVG(TOTAL)
+		FROM PROFIT)
 
 
+-- FIND THE GUIDES THAT HAD AVERAGE PROFIT PER VACATION BIGGER THAN THE
+-- AVERAGE PROFIT PER GUIDE IN JULY 2017
 
+WITH VACPROFIT AS
+(SELECT EMPID, VACID, SUM(PERCENT*PRICE) TOTAL
+FROM GUIDANCE G JOIN VACATION V 
+	ON G.VACID=V.VACID JOIN CONTENT C
+		ON V.VACID=C.VACID
+WHERE START_DATE BETWEEN '2017-07-01' AND '2017-07-31'
+GROUP BY EMPID, VACID)
 
+SELECT EMPID, AVG(TOTAL) AVRG
+INTO #AVRGPROFIT
+FROM VACPROFIT
+GROUP BY EMPID
 
+WITH PROFIT AS
+(SELECT EMPID, SUM(PERCENT*PRICE) TOTAL
+FROM GUIDANCE G JOIN VACATION V 
+	ON G.VACID=V.VACID JOIN CONTENT C
+		ON V.VACID=C.VACID
+WHERE START_DATE BETWEEN '2017-07-01' AND '2017-07-31'
+GROUP BY EMPID)
 
-
-
-
+SELECT EMPID
+FROM #AVRGPROFIT
+WHERE AVRG > (SELECT AVG(TOTAL)
+		FROM PROFIT)
 
 
 
